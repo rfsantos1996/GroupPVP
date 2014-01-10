@@ -78,7 +78,7 @@ public class MySQL {
                             pl.playerNames.put(rs.getString("name"), id);
                             players.add(rs.getString("name"));
                         }
-                        pl.groups.put(id, new Group(rs.getString("name"), rs.getString("owner"), players));
+                        pl.groups.put(id, new Group(id, pl.maxPlayers, rs.getString("name"), rs.getString("owner"), players));
                     }
                     pl.getLogger().log(Level.INFO, "Loaded all groups and players.");
                 } catch (SQLException e) {
@@ -132,7 +132,7 @@ public class MySQL {
             for (Map.Entry<String, Integer> set : pl.playerNames.entrySet()) {
                 ResultSet rs = getConn().createStatement().executeQuery("SELECT `groupid` FROM `gpvp-players` WHERE `name`='" + set.getKey() + "';");
                 if (rs.next()) {
-                    if (rs.getInt("groupid") != set.getValue()) {
+                    if (rs.getInt("groupid") != set.getValue()) { // this will update the group if not the same
                         getConn().createStatement().executeUpdate("UPDATE `gpvp-players` SET `groupid`=" + set.getValue() + " WHERE `name`='" + set.getKey().toLowerCase() + "';");
                     }
                 } else {

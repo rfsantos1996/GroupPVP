@@ -22,7 +22,7 @@ import org.bukkit.scheduler.BukkitRunnable;
  * @author Rafael
  */
 public class GroupPVP extends JavaPlugin implements Listener {
-    
+
     private FileConfiguration config;
     public MySQL sql;
     public int maxPlayers;
@@ -30,7 +30,8 @@ public class GroupPVP extends JavaPlugin implements Listener {
     public Map<String, Integer> playerNames = new HashMap();
     public Map<Integer, Group> groups = new HashMap();
     public Map<Player, Group> players = new HashMap();
-    
+    public Map<Player, Group> invitations = new HashMap();
+
     @Override
     public void onEnable() {
         config = getConfig();
@@ -39,6 +40,23 @@ public class GroupPVP extends JavaPlugin implements Listener {
         config.addDefault("config.mysql.user", "root");
         config.addDefault("config.mysql.password", "root");
         config.addDefault("config.mysql.url", "jdbc:mysql://localhost:3306/database");
+        //config.addDefault("lang.", "&");
+        config.addDefault("lang.alreadyOnAGroup", "&cYou are already on a group.");
+        config.addDefault("lang.alreadyOnAnotherGroup", "&cPlayer is on other group.");
+        config.addDefault("lang.groupCreated", "&6Group created!");
+        config.addDefault("lang.couldntCreateGroup", "&4Couldnt create group.");
+        config.addDefault("lang.playerInvited", "&6Player invited.");
+        config.addDefault("lang.youWereInvited", "&6You were invited for group &e%gname&6 by &e%owner&6, use &e/gpvp accept&6 to participate");
+        config.addDefault("lang.playerKicked", "&cPlayer kicked.");
+        config.addDefault("lang.youWereKicked", "&cYou have been kicked from the group by &4%owner&c.");
+        config.addDefault("lang.youJoinedGroup", "&6You joined group &e%gname&6.");
+        config.addDefault("lang.groupIsFull", "&4Sorry, the group is full. &cContact the group owner.");
+        config.addDefault("lang.noInvitations", "&cYou dont have any invitations.");
+        config.addDefault("lang.playerNotFound", "&cPlayer not found.");
+        config.addDefault("lang.noPermission", "&cNo permission.");
+        config.addDefault("lang.youArentOnAnyGroup", "&4You dont have any group.");
+        config.addDefault("lang.groupNotFound", "&cGroup not found. :/");
+        config.addDefault("lang.dontPunchYourAlly", "&cDont punch your ally.");
         config.options().copyDefaults(true);
         saveConfig();
         reloadConfig();
@@ -49,19 +67,23 @@ public class GroupPVP extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginCommand("gpvp").setExecutor(new GPVPExecutor(this));
         getServer().getScheduler().scheduleAsyncRepeatingTask(this, new BukkitRunnable() {
-            
+
             @Override
             public void run() {
                 sql.saveAllAsync();
             }
         }, config.getInt("config.saveDelayInTicks"), config.getInt("config.saveDelayInTicks"));
     }
-    
+
     @Override
     public void onDisable() {
         sql.saveAllSync();
     }
-    
+
+    public String getLang(String path) {
+        return config.getString("lang." + path).replaceAll("&", "§");
+    }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
@@ -71,34 +93,34 @@ public class GroupPVP extends JavaPlugin implements Listener {
                 if (g.isOnPlayerList(p)) {
                     players.put(p, g);
                 } else {
-                    p.sendMessage("Voce foi expulso.");
+                    p.sendMessage(getLang("youWereKicked").replaceAll("%owner", g.getOwner()));
                     playerNames.remove(p.getName().toLowerCase());
                     toDelete.add(p.getName().toLowerCase());
                 }
             } else {
-                p.sendMessage("O grupo foi deletado.");
+                p.sendMessage(getLang("groupNotFound"));
                 playerNames.remove(p.getName().toLowerCase());
                 toDelete.add(p.getName().toLowerCase());
             }
         }
     }
-    
+
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         checkDisconnect(e.getPlayer());
     }
-    
+
     @EventHandler
     public void onKick(PlayerKickEvent e) {
         checkDisconnect(e.getPlayer());
     }
-    
+
     private void checkDisconnect(Player player) {
         if (players.containsKey(player)) {
             players.remove(player);
         }
     }
-    
+
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDamage(EntityDamageByEntityEvent e) {
         if (e.getEntity() instanceof Player) {
@@ -114,7 +136,7 @@ public class GroupPVP extends JavaPlugin implements Listener {
             }
             if (damager != null && players.containsKey(damaged) && players.containsKey(damager)) {
                 if (players.get(damaged).equals(players.get(damager))) {
-                    damager.sendMessage("Nao bata no seu aliado!");
+                    damager.sendMessage(getLang("dontPunchYourAlly"));
                     e.setCancelled(true);
                 }
             }

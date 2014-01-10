@@ -8,6 +8,9 @@ commands:
      description: Main command
      usage: Use /gpvp (create/invite/kick) (name)
 permissions:
-   dotamine.play:
-     description: Gives access to the main command
+   gpvp.create:
+     description: Gives access to create, invite and kick players
+     default: true
+   gpvp.join:
+     description: Gives access to join the group
      default: true
