@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.bukkit.Location;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -11,6 +12,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -92,7 +94,20 @@ public class GroupPVP extends JavaPlugin implements Listener {
     @EventHandler
     public void onRespawn(PlayerRespawnEvent e) {
         if (players.containsKey(e.getPlayer())) {
-            e.getPlayer().setCompassTarget(players.get(e.getPlayer()).getBase());
+            Location base = players.get(e.getPlayer()).getBase();
+            if (e.getPlayer().getLocation().getWorld().equals(base.getWorld())) {
+                e.getPlayer().setCompassTarget(base);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onWorldChange(PlayerChangedWorldEvent e) {
+        if (players.containsKey(e.getPlayer())) {
+            Location base = players.get(e.getPlayer()).getBase();
+            if (e.getPlayer().getLocation().getWorld().equals(base.getWorld())) {
+                e.getPlayer().setCompassTarget(base);
+            }
         }
     }
 
@@ -105,7 +120,9 @@ public class GroupPVP extends JavaPlugin implements Listener {
             if (g != null) {
                 if (g.isOnPlayerList(p)) {
                     players.put(p, g);
-                    p.setCompassTarget(g.getBase());
+                    if (p.getLocation().getWorld().equals(g.getBase().getWorld())) {
+                        p.setCompassTarget(g.getBase());
+                    }
                 } else {
                     p.sendMessage(getLang("youWereKicked").replaceAll("%owner", g.getOwner()));
                     playerNames.remove(p.getName().toLowerCase());
