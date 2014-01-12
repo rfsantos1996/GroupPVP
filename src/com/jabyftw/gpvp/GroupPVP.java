@@ -14,6 +14,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -26,7 +27,8 @@ public class GroupPVP extends JavaPlugin implements Listener {
     private FileConfiguration config;
     public MySQL sql;
     public int maxPlayers;
-    public List<String> toDelete = new ArrayList();
+    public List<String> toPDelete = new ArrayList();
+    public List<Integer> toGDelete = new ArrayList();
     public Map<String, Integer> playerNames = new HashMap();
     public Map<Integer, Group> groups = new HashMap();
     public Map<Player, Group> players = new HashMap();
@@ -57,6 +59,9 @@ public class GroupPVP extends JavaPlugin implements Listener {
         config.addDefault("lang.youArentOnAnyGroup", "&4You dont have any group.");
         config.addDefault("lang.groupNotFound", "&cGroup not found. :/");
         config.addDefault("lang.dontPunchYourAlly", "&cDont punch your ally.");
+        config.addDefault("lang.changedBaseLocation", "&6Changed base location.");
+        config.addDefault("lang.groupDeleted", "&4Group deleted.");
+        config.addDefault("lang.yourGroupWasDeleted", "&cSorry, your group was deleted.");
         config.options().copyDefaults(true);
         saveConfig();
         reloadConfig();
@@ -85,22 +90,31 @@ public class GroupPVP extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    public void onRespawn(PlayerRespawnEvent e) {
+        if (players.containsKey(e.getPlayer())) {
+            e.getPlayer().setCompassTarget(players.get(e.getPlayer()).getBase());
+        }
+    }
+
+    @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
         if (playerNames.containsKey(p.getName().toLowerCase())) {
-            Group g = groups.get(playerNames.get(p.getName().toLowerCase()));
+            int gId = playerNames.get(p.getName().toLowerCase());
+            Group g = groups.get(gId);
             if (g != null) {
                 if (g.isOnPlayerList(p)) {
                     players.put(p, g);
+                    p.setCompassTarget(g.getBase());
                 } else {
                     p.sendMessage(getLang("youWereKicked").replaceAll("%owner", g.getOwner()));
                     playerNames.remove(p.getName().toLowerCase());
-                    toDelete.add(p.getName().toLowerCase());
+                    toPDelete.add(p.getName().toLowerCase());
                 }
             } else {
                 p.sendMessage(getLang("groupNotFound"));
+                toGDelete.add(gId);
                 playerNames.remove(p.getName().toLowerCase());
-                toDelete.add(p.getName().toLowerCase());
             }
         }
     }

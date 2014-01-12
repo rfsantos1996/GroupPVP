@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
+import org.bukkit.Location;
 import org.bukkit.scheduler.BukkitRunnable;
 
 public class MySQL {
@@ -49,6 +50,7 @@ public class MySQL {
                     + "  `id` INT NOT NULL AUTO_INCREMENT,\n"
                     + "  `name` VARCHAR(24) NOT NULL,\n"
                     + "  `owner` VARCHAR(20) NOT NULL,\n"
+                    + "  `locbase` VARCHAR(60) NOT NULL,\n"
                     + "  PRIMARY KEY (`id`),\n"
                     + "  UNIQUE INDEX `id_UNIQUE` (`id` ASC),\n"
                     + "  UNIQUE INDEX `name_UNIQUE` (`name` ASC),\n"
@@ -58,6 +60,10 @@ public class MySQL {
                     + "  `groupid` INT NOT NULL,\n"
                     + "  PRIMARY KEY (`name`),\n"
                     + "  UNIQUE INDEX `name_UNIQUE` (`name` ASC));");
+            if (Double.parseDouble(pl.getDescription().getVersion()) < 0.2D) {
+                getConn().createStatement().executeUpdate("ALTER TABLE `gpvp-groups` \n"
+                        + "ADD COLUMN `locbase` VARCHAR(60) NOT NULL AFTER `owner`;");
+            }
         } catch (SQLException e) {
             pl.getLogger().log(Level.WARNING, "Couldn't create tables");
         }
@@ -73,12 +79,14 @@ public class MySQL {
                     while (rs.next()) {
                         int id = rs.getInt("id");
                         List<String> players = new ArrayList();
+                        String[] loc = rs.getString("locbase").split(";");
+                        Location base = new Location(pl.getServer().getWorld(loc[0]), Integer.parseInt(loc[1]), Integer.parseInt(loc[2]), Integer.parseInt(loc[3]));
                         ResultSet rs2 = getConn().createStatement().executeQuery("SELECT `name` FROM `gpvp-players` WHERE `groupid`=" + id + ";");
                         while (rs2.next()) {
                             pl.playerNames.put(rs.getString("name"), id);
                             players.add(rs.getString("name"));
                         }
-                        pl.groups.put(id, new Group(id, pl.maxPlayers, rs.getString("name"), rs.getString("owner"), players));
+                        pl.groups.put(id, new Group(id, pl.maxPlayers, rs.getString("name"), rs.getString("owner"), base, players));
                     }
                     pl.getLogger().log(Level.INFO, "Loaded all groups and players.");
                 } catch (SQLException e) {
@@ -88,10 +96,11 @@ public class MySQL {
         });
     }
 
-    public int saveGroup(String name, String owner) {
+    public int saveGroup(String name, String owner, Location loc) {
+        String locS = loc.getWorld().getName() + ";" + loc.getBlockX() + ";" + loc.getBlockY() + ";" + loc.getBlockZ();
         try {
             Statement s = getConn().createStatement();
-            s.executeUpdate("INSERT INTO `gpvp-groups` (`name`, `owner`) VALUES ('" + name + "', " + owner.toLowerCase() + ");", Statement.RETURN_GENERATED_KEYS);
+            s.executeUpdate("INSERT INTO `gpvp-groups` (`name`, `owner`, `locbase`) VALUES ('" + name + "', '" + owner.toLowerCase() + "', '" + locS + "');", Statement.RETURN_GENERATED_KEYS);
             ResultSet rs = s.getGeneratedKeys();
             while (rs.next()) {
                 return rs.getInt(1);
@@ -124,9 +133,14 @@ public class MySQL {
     private void save() {
         try {
             for (Group g : pl.groups.values()) {
-                ResultSet rs = getConn().createStatement().executeQuery("SELECT `name` FROM `gpvp-groups` WHERE `name`='" + g.getName() + "';");
-                if (!rs.next()) {
-                    getConn().createStatement().execute("INSERT INTO `gpvp-groups` (`name`, `owner`) VALUES ('" + g.getName() + "', " + g.getOwner() + ");");
+                ResultSet rs = getConn().createStatement().executeQuery("SELECT `locbase` FROM `gpvp-groups` WHERE `name`='" + g.getName() + "';");
+                String locS = g.getBase().getWorld().getName() + ";" + g.getBase().getBlockX() + ";" + g.getBase().getBlockY() + ";" + g.getBase().getBlockZ();
+                if (rs.next()) {
+                    if (rs.getString("locbase").equalsIgnoreCase(locS)) {
+                        getConn().createStatement().executeUpdate("UPDATE `gpvp-groups` SET `locbase`='" + locS + "' WHERE `name`='" + g.getName() + "';");
+                    }
+                } else {
+                    getConn().createStatement().execute("INSERT INTO `gpvp-groups` (`name`, `owner`, `locbase`) VALUES ('" + g.getName() + "', '" + g.getOwner() + "', '" + locS + "');");
                 }
             }
             for (Map.Entry<String, Integer> set : pl.playerNames.entrySet()) {
@@ -139,9 +153,14 @@ public class MySQL {
                     getConn().createStatement().execute("INSERT INTO `gpvp-players` (`name`, `groupid`) VALUES ('" + set.getKey().toLowerCase() + "', " + set.getValue() + ");");
                 }
             }
-            for (String s : pl.toDelete) {
+            for (String s : pl.toPDelete) {
                 getConn().createStatement().execute("DELETE FROM `gpvp-players` WHERE `name`='" + s.toLowerCase() + "';");
-                pl.toDelete.remove(s);
+                pl.toPDelete.remove(s);
+            }
+            for (int i : pl.toGDelete) {
+                getConn().createStatement().execute("DELETE FROM `gpvp-groups` WHERE `id`=" + i + ";");
+                //getConn().createStatement().execute("DELETE FROM `gpvp-players` WHERE `groupid`=" + i + ";"); -- Safe key thing on MySQL
+                pl.toGDelete.remove(i);
             }
         } catch (SQLException e) {
             pl.getLogger().log(Level.WARNING, "Couldn't save to database.");

@@ -1,6 +1,7 @@
 package com.jabyftw.gpvp;
 
 import java.util.Arrays;
+import java.util.Map;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -11,13 +12,13 @@ import org.bukkit.entity.Player;
  * @author Rafael
  */
 public class GPVPExecutor implements CommandExecutor {
-
+    
     private final GroupPVP pl;
-
+    
     public GPVPExecutor(GroupPVP pl) {
         this.pl = pl;
     }
-
+    
     @Override // /gpvp (create/invite/kick) (name)
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (args.length > 0) {
@@ -30,9 +31,9 @@ public class GPVPExecutor implements CommandExecutor {
                             return true;
                         } else {
                             String owner = sender.getName().toLowerCase();
-                            int id = pl.sql.saveGroup(args[1], owner);
+                            int id = pl.sql.saveGroup(args[1], owner, p.getLocation());
                             if (id > 0) {
-                                Group g = new Group(id, pl.maxPlayers, args[1], owner, Arrays.asList(sender.getName().toLowerCase()));
+                                Group g = new Group(id, pl.maxPlayers, args[1], owner, p.getLocation(), Arrays.asList(sender.getName().toLowerCase()));
                                 pl.groups.put(id, g);
                                 pl.playerNames.put(owner, id);
                                 pl.players.put(p, g);
@@ -81,7 +82,7 @@ public class GPVPExecutor implements CommandExecutor {
                                     if (pl.players.containsKey(kicked) && pl.players.get(kicked).equals(g)) {
                                         pl.players.remove(kicked);
                                         pl.playerNames.remove(kicked.getName().toLowerCase());
-                                        pl.toDelete.add(kicked.getName().toLowerCase());
+                                        pl.toPDelete.add(kicked.getName().toLowerCase());
                                         g.removePlayer(kicked.getName().toLowerCase());
                                         sender.sendMessage(pl.getLang("playerKicked"));
                                         kicked.sendMessage(pl.getLang("youWereKicked").replaceAll("%owner", g.getOwner()));
@@ -104,21 +105,65 @@ public class GPVPExecutor implements CommandExecutor {
                         }
                     }
                 } else { // accept
-                    if (pl.invitations.containsKey(p)) {
-                        Group g = pl.invitations.get(p);
-                        if (g.addPlayer(p.getName())) {
-                            pl.playerNames.put(p.getName().toLowerCase(), g.getId());
-                            pl.players.put(p, g);
-                            pl.invitations.remove(p);
-                            sender.sendMessage(pl.getLang("youJoinedGroup").replaceAll("%gname", g.getName()));
-                            return true;
+                    if (args[0].startsWith("a")) {
+                        if (pl.invitations.containsKey(p)) {
+                            Group g = pl.invitations.get(p);
+                            if (g.addPlayer(p.getName())) {
+                                pl.playerNames.put(p.getName().toLowerCase(), g.getId());
+                                pl.players.put(p, g);
+                                pl.invitations.remove(p);
+                                sender.sendMessage(pl.getLang("youJoinedGroup").replaceAll("%gname", g.getName()));
+                                return true;
+                            } else {
+                                sender.sendMessage(pl.getLang("groupIsFull"));
+                                return true;
+                            }
                         } else {
-                            sender.sendMessage(pl.getLang("groupIsFull"));
+                            sender.sendMessage(pl.getLang("noInvitations"));
                             return true;
                         }
-                    } else {
-                        sender.sendMessage(pl.getLang("noInvitations"));
-                        return true;
+                    } else if (args[0].startsWith("d")) { // deleted
+                        if (pl.players.containsKey(p)) {
+                            Group g = pl.players.get(p);
+                            if (g.isOwner(p.getName().toLowerCase())) {
+                                int id = g.getId();
+                                for (String s : g.getPlayers()) {
+                                    pl.playerNames.remove(s);
+                                    pl.toPDelete.add(s);
+                                }
+                                for (Map.Entry<Player, Group> set : pl.players.entrySet()) {
+                                    if (set.getValue().equals(g)) {
+                                        set.getKey().sendMessage(pl.getLang("yourGroupWasDeleted"));
+                                        pl.players.remove(set.getKey());
+                                    }
+                                }
+                                pl.groups.remove(id);
+                                pl.toGDelete.add(id);
+                                sender.sendMessage(pl.getLang("groupDeleted"));
+                                return true;
+                            } else {
+                                sender.sendMessage(pl.getLang("noPermission"));
+                                return true;
+                            }
+                        } else {
+                            sender.sendMessage(pl.getLang("youArentOnAnyGroup"));
+                            return true;
+                        }
+                    } else { // set base
+                        if (pl.players.containsKey(p)) {
+                            Group g = pl.players.get(p);
+                            if (g.isOwner(p.getName().toLowerCase())) {
+                                g.setBase(p.getLocation());
+                                sender.sendMessage(pl.getLang("changedBaseLocation"));
+                                return true;
+                            } else {
+                                sender.sendMessage(pl.getLang("noPermission"));
+                                return true;
+                            }
+                        } else {
+                            sender.sendMessage(pl.getLang("youArentOnAnyGroup"));
+                            return true;
+                        }
                     }
                 }
             } else {
