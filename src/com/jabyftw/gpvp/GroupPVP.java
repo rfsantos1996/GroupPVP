@@ -28,6 +28,7 @@ public class GroupPVP extends JavaPlugin implements Listener {
 
     private FileConfiguration config;
     public MySQL sql;
+    public boolean askOnJoin;
     public int maxPlayers;
     public List<String> toPDelete = new ArrayList();
     public List<Integer> toGDelete = new ArrayList();
@@ -41,6 +42,7 @@ public class GroupPVP extends JavaPlugin implements Listener {
         config = getConfig();
         config.addDefault("config.maxPlayersPerGroup", 5);
         config.addDefault("config.saveDelayInTicks", 36000);
+        config.addDefault("config.askToCreateGroupOnJoin", true);
         config.addDefault("config.mysql.user", "root");
         config.addDefault("config.mysql.password", "root");
         config.addDefault("config.mysql.url", "jdbc:mysql://localhost:3306/database");
@@ -64,10 +66,12 @@ public class GroupPVP extends JavaPlugin implements Listener {
         config.addDefault("lang.changedBaseLocation", "&6Changed base location.");
         config.addDefault("lang.groupDeleted", "&4Group deleted.");
         config.addDefault("lang.yourGroupWasDeleted", "&cSorry, your group was deleted.");
+        config.addDefault("lang.questionOnJoin", "&6You dont have a group, you can create one using &e/gpvp&6.");
         config.options().copyDefaults(true);
         saveConfig();
         reloadConfig();
         maxPlayers = config.getInt("config.maxPlayersPerGroup");
+        askOnJoin = config.getBoolean("config.askToCreateGroupOnJoin");
         sql = new MySQL(this, config.getString("config.mysql.user"), config.getString("config.mysql.password"), config.getString("config.mysql.url"));
         sql.createTables();
         sql.loadGroups();
@@ -132,6 +136,10 @@ public class GroupPVP extends JavaPlugin implements Listener {
                 p.sendMessage(getLang("groupNotFound"));
                 toGDelete.add(gId);
                 playerNames.remove(p.getName().toLowerCase());
+            }
+        } else {
+            if(askOnJoin) {
+                p.sendMessage(getLang("questionOnJoin"));
             }
         }
     }

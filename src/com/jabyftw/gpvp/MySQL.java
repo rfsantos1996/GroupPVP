@@ -83,12 +83,12 @@ public class MySQL {
                         Location base = new Location(pl.getServer().getWorld(loc[0]), Integer.parseInt(loc[1]), Integer.parseInt(loc[2]), Integer.parseInt(loc[3]));
                         ResultSet rs2 = getConn().createStatement().executeQuery("SELECT `name` FROM `gpvp-players` WHERE `groupid`=" + id + ";");
                         while (rs2.next()) {
-                            pl.playerNames.put(rs.getString("name"), id);
-                            players.add(rs.getString("name"));
+                            pl.playerNames.put(rs2.getString("name"), id);
+                            players.add(rs2.getString("name"));
                         }
                         pl.groups.put(id, new Group(id, pl.maxPlayers, rs.getString("name"), rs.getString("owner"), base, players));
                     }
-                    pl.getLogger().log(Level.INFO, "Loaded all groups and players.");
+                    pl.getLogger().log(Level.INFO, "Loaded " + pl.groups.size() + " groups and " + pl.playerNames.size() + " players.");
                 } catch (SQLException e) {
                     pl.getLogger().log(Level.WARNING, "Couldn't load groups");
                 }
