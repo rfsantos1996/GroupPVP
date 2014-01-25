@@ -41,7 +41,7 @@ public class GroupPVP extends JavaPlugin implements Listener {
     public void onEnable() {
         config = getConfig();
         config.addDefault("config.maxPlayersPerGroup", 5);
-        config.addDefault("config.saveDelayInTicks", 36000);
+        config.addDefault("config.saveDelayInTicks", 72000);
         config.addDefault("config.askToCreateGroupOnJoin", true);
         config.addDefault("config.mysql.user", "root");
         config.addDefault("config.mysql.password", "root");

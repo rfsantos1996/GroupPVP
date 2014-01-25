@@ -60,9 +60,12 @@ public class MySQL {
                     + "  `groupid` INT NOT NULL,\n"
                     + "  PRIMARY KEY (`name`),\n"
                     + "  UNIQUE INDEX `name_UNIQUE` (`name` ASC));");
-            if (Double.parseDouble(pl.getDescription().getVersion()) < 0.2D) {
-                getConn().createStatement().executeUpdate("ALTER TABLE `gpvp-groups` \n"
-                        + "ADD COLUMN `locbase` VARCHAR(60) NOT NULL AFTER `owner`;");
+            try {
+                if (Double.parseDouble(pl.getDescription().getVersion()) < 0.2D) {
+                    getConn().createStatement().executeUpdate("ALTER TABLE `gpvp-groups` \n"
+                            + "ADD COLUMN `locbase` VARCHAR(60) NOT NULL AFTER `owner`;");
+                }
+            } catch (NumberFormatException e) {
             }
         } catch (SQLException e) {
             pl.getLogger().log(Level.WARNING, "Couldn't create tables");
@@ -112,10 +115,10 @@ public class MySQL {
     }
 
     public void saveAllSync() {
-        pl.getLogger().log(Level.INFO, "Saving Sync...");
+        long start = System.currentTimeMillis();
         save();
         closeConn();
-        pl.getLogger().log(Level.INFO, "Saved and closed!");
+        pl.getLogger().log(Level.INFO, "Saved and closed in {0}ms", (System.currentTimeMillis() - start));
     }
 
     public void saveAllAsync() {
@@ -123,9 +126,7 @@ public class MySQL {
 
             @Override
             public void run() {
-                pl.getLogger().log(Level.INFO, "Saving Async...");
                 save();
-                pl.getLogger().log(Level.INFO, "Saved!");
             }
         });
     }

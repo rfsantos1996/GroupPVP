@@ -1,5 +1,5 @@
 name: GroupPVP
-version: 0.2.2
+version: 0.2.3
 author: rfsantos1996
 main: com.jabyftw.gpvp.GroupPVP
 description: PVP Groups on MySQL
@@ -8,9 +8,6 @@ commands:
      description: Main command
      usage: Use /gpvp (create/invite/kick/setbase/delete) (name)
 permissions:
-   gpvp.create:
-     description: Gives access to create, invite and kick players
-     default: true
-   gpvp.join:
-     description: Gives access to join the group
+   gpvp.use:
+     description: Gives access to use the plugin
      default: true
